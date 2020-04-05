@@ -1,0 +1,1102 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="http://code.jquery.com/mobile/1.4.2/jquery.mobile-1.4.2.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script src='https://kit.fontawesome.com/a076d05399.js'></script>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <script>
+
+        $(document).ready(function () {
+
+            if (!window.hasOwnProperty('webkitSpeechRecognition')) {
+
+                $("#speech")[0].hidden = true;
+
+            } else {
+
+                $("#movie")[0].style.marginLeft = "4%";
+            }
+
+
+
+            if (window.name != "") {
+
+                let e = document.getElementById("languageDDL");
+                e.value = window.name;
+                window.name = "";
+                cinemaPress = true;
+                $("#cinema")[0].style.backgroundColor = "#0073e6";
+                $("#cinema")[0].style.color = "white";
+                setLanguage();
+            }
+
+            getGenres();
+
+        });
+
+        language = "en-US";
+
+        var prevID;
+        var pageNum = 1;
+        var pageMax;
+        var similarPress = false;
+        var similarMovieID;
+        var nowPlayingPress = false;
+        var topRatedPress = false;
+        var popularPress = false;
+        var upcomingPress = false;
+        var searchBtnPress = false;
+        var cinemaPress = false;
+        var prevPress = false;
+        var nextPress = false;
+
+        var genres = [];
+
+        function onKeyPress(e) {
+            if (e.keyCode === 13) {
+                $("#SearchBtn").click();
+            }
+        }
+
+
+        function search(id) {
+
+            if (!prevPress && !nextPress && !similarPress) {
+                $("#main").hide();
+
+            } else {
+                $("#divHeader1").hide();
+            }
+
+            $(".main").empty();
+
+            prevID = null;
+            var posterExist = false;
+
+            //var finished = false;
+            //var j = 10;
+
+            //for (var k = 1; k < 10 && !finished; k++) {
+
+            if (similarPress) {
+
+                var url = "https://api.themoviedb.org/3/movie/" + similarMovieID + "/similar?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=" + language + "&page=" + pageNum;
+            }
+
+            else if (topRatedPress) {
+
+                var url = "https://api.themoviedb.org/3/movie/top_rated?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=" + language + "&page=" + pageNum + "&region=US";
+            }
+
+            else if (popularPress) {
+
+                var url = "https://api.themoviedb.org/3/movie/popular?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=" + language + "&page=" + pageNum + "&region=US";
+            }
+
+            else if (upcomingPress) {
+
+                var url = "https://api.themoviedb.org/3/movie/upcoming?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=" + language + "&page=" + pageNum + "&region=US";
+            }
+
+            else if (nowPlayingPress) {
+                var url = "https://api.themoviedb.org/3/movie/now_playing?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=" + language + "&page=" + pageNum + "&region=US";
+
+            } else {
+
+
+                if (/^[A-Za-z0-9 ]+$/.test($("#movie").val())) {
+
+                    //var url = "http://www.omdbapi.com/?apikey=b5e5a8ff&page=" + pageNum + "&s=" + $("#movie").val();
+                    //language = "en-US";
+                    var url = "https://api.themoviedb.org/3/search/multi?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&include_adult=true&language=" + language + "&page=" + pageNum + "&query=" + encodeURI($("#movie").val());
+
+                } else if (/[\u0590-\u05FF]/.test($("#movie").val())) {
+                    //language = "he-IL";
+                    var url = "https://api.themoviedb.org/3/search/multi?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&include_adult=true&language=" + language + "&page=" + pageNum + "&query=" + encodeURI($("#movie").val());
+                }
+            }
+
+            $.getJSON(url, function (data, status) {
+
+                //if (status == "success" && !finished) {
+                if (status == "success") {
+                    console.log("success");
+
+                    if (id == "SearchBtn" || id == "similarMovies" || id == "nowPlaying" || id == "topRated" || id == "popular" || id == "upcoming") {
+
+                        pageMax = data.total_pages;
+                        pageMax = Math.min(pageMax, 7);
+
+                    }
+
+                    if (data.Response === "False") {
+                        $("#divHeader1").show();
+                        $(".main").empty();
+                        alert(data.Error);
+
+                    } else {
+
+
+                        $(".main").append("<br>");
+
+                        if (language == "en-US") {
+                            $(".main").append("<div style='display:inline-block;'>");
+                        } else {
+                            $(".main").append("<div dir='rtl' style='display:inline-block;'>");
+                        }
+
+                        var arrayDup = [];
+
+                        for (var i = 0; i < data.results.length; i++) {
+
+                            if (!arrayDup.includes(data.results[i].id)) {
+
+                                arrayDup.push(data.results[i].id);
+
+                                if (data.results[i].poster_path != null) {
+                                    posterExist = true;
+
+                                    var title;
+                                    if ((data.results[i].media_type === "movie") || similarPress || nowPlayingPress || topRatedPress || popularPress || upcomingPress) {
+                                        var release_date = data.results[i].release_date.toString().split("-").reverse().join("/");
+                                        title = data.results[i].title.toString().split("'").join('|').split('"').join('^');
+
+                                    } else if (data.results[i].media_type === "tv") {
+                                        var release_date = data.results[i].first_air_date.toString().split("-").reverse().join("/");
+                                        title = data.results[i].name.toString().split("'").join('|').split('"').join('^');
+                                    }
+
+                                    var plot = data.results[i].overview.split("'").join('|').split('"').join('^');
+
+                                    if (language === "he-IL") {
+
+                                        var genresStr;
+
+                                        for (var j = 0; j < data.results[i].genre_ids.length; j++) {
+
+                                            var genre = genres.find(genre => genre.id === data.results[i].genre_ids[j]);
+
+                                            if (genre) {
+
+                                                if (j == 0) {
+                                                    genresStr = genre.name;
+
+                                                } else {
+                                                    genresStr = genresStr.concat(", " + genre.name);
+                                                }
+
+                                            }
+
+                                        }
+
+                                        if (genresStr) {
+                                            genresStr = genresStr.toString().split("'").join('|').split('"').join('^');
+                                        }
+
+                                        $(".main").append("<img id ='" + data.results[i].id + "' data-genres ='" + genresStr + "' data-type ='" + data.results[i].media_type + "' data-title='" + title + "' data-plot='" + plot + "' data-rel_date='" + release_date + "' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-right:0.65vw; margin-left:0.65vw; max-width:130px' height=165em width=30.88% src='https://image.tmdb.org/t/p/w500" + data.results[i].poster_path + "' onclick='movieClick(this.id)' />");
+                                        $(".main").append("<div dir='rtl' style='margin-top:10px;display:none;margin-bottom:15px;font-family:Arial; position:inherit;margin-right:0.65vw;margin-left:0.65vw;font-size:17px;background-image:url(background-1.jpg);background-size:cover;text-align:-webkit-auto;' id='" + data.results[i].id + "_desc" + "'></div>");
+
+                                    } else {
+                                        $(".main").append("<img id ='" + data.results[i].id + "' data-type ='" + data.results[i].media_type + "' data-title='" + title + "' data-plot='" + plot + "' data-rel_date='" + release_date + "' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-left:0.65vw; margin-right:0.65vw;max-width:130px' height=165em width=30.88% src='https://image.tmdb.org/t/p/w500" + data.results[i].poster_path + "' onclick='movieClick(this.id)' />");
+                                        $(".main").append("<div style='margin-top:10px;display:none;margin-bottom:15px;font-family:Arial; position:inherit;margin-left:0.65vw;margin-right:0.65vw;font-size:17px;background-image:url(background-1.jpg);background-size:cover;text-align:-webkit-auto;' id='" + data.results[i].id + "_desc" + "'></div>");
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!posterExist && pageNum > 1) {
+                            if (id === "prevResults") {
+
+                                prevResults();
+
+                            } else {
+                                if (pageNum < pageMax) {
+                                    nextResults();
+
+                                } else {
+                                    pageMax = pageNum - 1;
+                                    prevResults();
+                                }
+                            }
+                        } else if (!posterExist) {
+
+                            $("#divHeader1").show();
+                            $(".main").empty();
+
+                            if (language === "he-IL") {
+                                alert("הסרט " + $("#movie").val() + " לא נמצא");
+
+                            } else {
+                                alert("Movie " + $("#movie").val() + "not found!");
+                            }
+
+                        } else {
+
+                            $(".main").append("</div>");
+
+                            if (language == "en-US") {
+
+                                $(".main").append("<div style='margin-top:10px';display:inline-block>");
+
+                                if (pageNum == 1) {
+                                    $(".main").append("<i class='far fa-arrow-alt-circle-left' style='display:none; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-left: 12%; cursor: pointer; ' id='prevResults' onclick=prevResults('prevResults') />");
+
+                                } else {
+
+                                    if (pageNum == pageMax) {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-left' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-right: 25%; cursor: pointer; ' id='prevResults' onclick=prevResults('prevResults') />");
+
+                                    } else {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-left' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-right: 6.5%; cursor: pointer; ' id='prevResults' onclick=prevResults('prevResults') />");
+                                    }
+
+                                }
+
+                                if (pageNum == pageMax) {
+                                    $(".main").append("<i class='far fa-arrow-alt-circle-right' style='display:none; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-left: 12%; cursor: pointer; ' id='nextResults' onclick=nextResults('nextResults') />");
+
+                                } else {
+
+                                    if (pageNum == 1) {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-right' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-left: 25%; cursor: pointer; ' id='nextResults' onclick=nextResults('nextResults') />");
+
+                                    } else {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-right' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-left: 6.5%; cursor: pointer; ' id='nextResults' onclick=nextResults('nextResults') />");
+
+                                    }
+
+                                }
+                            }
+                            else {
+
+                                $(".main").append("<div dir='rtl' style='margin-top:10px';display:inline-block>");
+
+                                if (pageNum == 1) {
+                                    $(".main").append("<i class='far fa-arrow-alt-circle-right' style='display:none; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-right: 12%; cursor: pointer; ' id='prevResults' onclick=prevResults('prevResults') />");
+
+                                } else {
+
+                                    if (pageNum == pageMax) {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-right' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-left: 25%; cursor: pointer; ' id='prevResults' onclick=prevResults('prevResults') />");
+
+                                    } else {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-right' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-left: 6.5%; cursor: pointer; ' id='prevResults' onclick=prevResults('prevResults') />");
+                                    }
+                                }
+
+                                if (pageNum == pageMax) {
+                                    $(".main").append("<i class='far fa-arrow-alt-circle-left' style='display:none; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-right: 12%; cursor: pointer; ' id='nextResults' onclick=nextResults('nextResults') />");
+
+                                } else {
+
+                                    if (pageNum == 1) {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-left' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-right: 25%; cursor: pointer; ' id='nextResults' onclick=nextResults('nextResults') />");
+
+                                    } else {
+                                        $(".main").append("<i class='far fa-arrow-alt-circle-left' style='display:inline-block; font-size:12vw; vertical-align:50%; color:gold; max-width:100px; margin-right: 6.5%; cursor: pointer; ' id='nextResults' onclick=nextResults('nextResults') />");
+
+                                    }
+
+                                }
+
+                            }
+
+
+                            $(".main").append("</div>");
+
+
+                            $("#main").fadeIn(1000);
+
+                            if (!prevPress && !nextPress && !similarPress) {
+
+                                $('html,body').animate({
+                                    scrollTop: $("#main").offset().top
+                                }, 600);
+
+                            } else {
+
+                                $("#divHeader1").show();
+
+                                $('html,body').animate({
+                                    scrollTop: $("#main").offset().top
+                                }, 0);
+
+
+
+                            }
+                        }
+                    }
+
+                } else if (status == "timeout") {
+                    alert("Something is wrong with the connection");
+                } else if (status == "error" || status == "parsererror") {
+                    alert("An error occured");
+                }
+            });
+
+            //}
+        }
+
+        function searchBtn(id) {
+
+            var movieName = document.getElementById('movie');
+            if (movieName.value) {
+                event.preventDefault();
+                pageNum = 1;
+
+                searchBtnPress = true;
+                similarPress = false;
+                nowPlayingPress = false;
+                topRatedPress = false;
+                popularPress = false;
+                upcomingPress = false;
+                cinemaPress = false;
+                prevPress = false;
+                nextPress = false;
+
+                $("#nowPlaying")[0].style.backgroundColor = "white";
+                $("#nowPlaying")[0].style.color = "navy";
+                $("#topRated")[0].style.backgroundColor = "white";
+                $("#topRated")[0].style.color = "navy";
+                $("#popular")[0].style.backgroundColor = "white";
+                $("#popular")[0].style.color = "navy";
+                $("#upcoming")[0].style.backgroundColor = "white";
+                $("#upcoming")[0].style.color = "navy";
+                $("#cinema")[0].style.backgroundColor = "white";
+                $("#cinema")[0].style.color = "navy";
+
+                search(id);
+
+            }
+
+        }
+
+        function prevResults(id) {
+
+            prevPress = true;
+            pageNum--;
+            search(id);
+
+        }
+
+        function nextResults(id) {
+
+            nextPress = true;
+            pageNum++;
+            search(id);
+
+        }
+
+        function cinemaClick() {
+
+            window.name = language;
+
+        }
+
+        function setCinema() {
+
+            $(".main").empty();
+            $(".main").hide();
+            $(".main").append("<br>");
+
+            if (language == 'he-IL') {
+                $(".main").append("<div dir='rtl' style='display:inline-block;'>");
+
+                $(".main").append("<a href='https://www.yesplanet.co.il/' onClick='cinemaClick()' ><img id ='yes_planet' src='yes_planet.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-right:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://www.cinema-city.co.il/' onClick='cinemaClick()' ><img id ='cinema_city' src='cinema_city.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-right:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://hotcinema.co.il/' onClick='cinemaClick()' ><img id ='hot' src='hot.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-right:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://www.rav-hen.co.il/' onClick='cinemaClick()' ><img id ='rav_hen' src='rav_hen.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-right:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://www.lev.co.il/' onClick='cinemaClick()' ><img id ='lev' src='lev.jpeg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-right:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+
+            } else {
+                $(".main").append("<div style='display:inline-block;'>");
+
+                $(".main").append("<a href='https://www.yesplanet.co.il/' onClick='cinemaClick()' ><img id ='yes_planet' src='yes_planet.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-left:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://www.cinema-city.co.il/' onClick='cinemaClick()' ><img id ='cinema_city' src='cinema_city.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-left:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://hotcinema.co.il/' onClick='cinemaClick()' ><img id ='hot' src='hot.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-left:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://www.rav-hen.co.il/' onClick='cinemaClick()' ><img id ='rav_hen' src='rav_hen.jpg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-left:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+                $(".main").append("<a href='https://www.lev.co.il/' onClick='cinemaClick()' ><img id ='lev' src='lev.jpeg' style='cursor:pointer; border: 0.3vw solid gold;border-radius:15px; margin-bottom:5px; margin-left:1.3vw; max-width:130px' height=130em width=30.88% /></a>");
+
+
+            }
+
+            $(".main").append("</div>");
+            $(".main").fadeIn(1000);
+
+            $('html,body').animate({
+                scrollTop: $("#main").offset().top
+            }, 600);
+        }
+
+        function similarMovies(movieID) {
+
+            pageNum = 1;
+            searchBtnPress = false;
+            similarPress = true;
+            nowPlayingPress = false;
+            topRatedPress = false;
+            popularPress = false;
+            upcomingPress = false;
+            cinemaPress = false;
+            prevPress = false;
+            nextPress = false;
+
+            $("#nowPlaying")[0].style.backgroundColor = "white";
+            $("#nowPlaying")[0].style.color = "navy";
+            $("#topRated")[0].style.backgroundColor = "white";
+            $("#topRated")[0].style.color = "navy";
+            $("#popular")[0].style.backgroundColor = "white";
+            $("#popular")[0].style.color = "navy";
+            $("#upcoming")[0].style.backgroundColor = "white";
+            $("#upcoming")[0].style.color = "navy";
+            $("#cinema")[0].style.backgroundColor = "white";
+            $("#cinema")[0].style.color = "navy";
+
+            similarMovieID = movieID;
+            search("similarMovies");
+
+        }
+
+        function nowPlaying() {
+            pageNum = 1;
+            searchBtnPress = false;
+            similarPress = false;
+            nowPlayingPress = true;
+            topRatedPress = false;
+            popularPress = false;
+            upcomingPress = false;
+            cinemaPress = false;
+            prevPress = false;
+            nextPress = false;
+
+            $("#nowPlaying")[0].style.backgroundColor = "#0073e6";
+            $("#nowPlaying")[0].style.color = "white";
+
+            $("#topRated")[0].style.backgroundColor = "white";
+            $("#topRated")[0].style.color = "navy";
+            $("#popular")[0].style.backgroundColor = "white";
+            $("#popular")[0].style.color = "navy";
+            $("#upcoming")[0].style.backgroundColor = "white";
+            $("#upcoming")[0].style.color = "navy";
+            $("#cinema")[0].style.backgroundColor = "white";
+            $("#cinema")[0].style.color = "navy";
+
+            $("#movie")[0].value = "";
+
+            search("nowPlaying");
+        }
+
+        function topRated() {
+            pageNum = 1;
+            searchBtnPress = false;
+            similarPress = false;
+            nowPlayingPress = false;
+            topRatedPress = true;
+            popularPress = false;
+            upcomingPress = false;
+            cinemaPress = false;
+            prevPress = false;
+            nextPress = false;
+
+            $("#topRated")[0].style.backgroundColor = "#0073e6";
+            $("#topRated")[0].style.color = "white";
+
+            $("#nowPlaying")[0].style.backgroundColor = "white";
+            $("#nowPlaying")[0].style.color = "navy";
+            $("#popular")[0].style.backgroundColor = "white";
+            $("#popular")[0].style.color = "navy";
+            $("#upcoming")[0].style.backgroundColor = "white";
+            $("#upcoming")[0].style.color = "navy";
+            $("#cinema")[0].style.backgroundColor = "white";
+            $("#cinema")[0].style.color = "navy";
+
+            $("#movie")[0].value = "";
+
+            search("topRated");
+        }
+
+        function popular() {
+            pageNum = 1;
+            searchBtnPress = false;
+            similarPress = false;
+            nowPlayingPress = false;
+            topRatedPress = false;
+            popularPress = true;
+            upcomingPress = false;
+            cinemaPress = false;
+            prevPress = false;
+            nextPress = false;
+
+            $("#popular")[0].style.backgroundColor = "#0073e6";
+            $("#popular")[0].style.color = "white";
+
+            $("#nowPlaying")[0].style.backgroundColor = "white";
+            $("#nowPlaying")[0].style.color = "navy";
+            $("#topRated")[0].style.backgroundColor = "white";
+            $("#topRated")[0].style.color = "navy";
+            $("#upcoming")[0].style.backgroundColor = "white";
+            $("#upcoming")[0].style.color = "navy";
+            $("#cinema")[0].style.backgroundColor = "white";
+            $("#cinema")[0].style.color = "navy";
+
+            $("#movie")[0].value = "";
+
+            search("popular");
+        }
+
+        function upcoming() {
+
+            pageNum = 1;
+            searchBtnPress = false;
+            similarPress = false;
+            nowPlayingPress = false;
+            topRatedPress = false;
+            popularPress = false;
+            upcomingPress = true;
+            cinemaPress = false;
+            prevPress = false;
+            nextPress = false;
+
+            $("#upcoming")[0].style.backgroundColor = "#0073e6";
+            $("#upcoming")[0].style.color = "white";
+
+            $("#nowPlaying")[0].style.backgroundColor = "white";
+            $("#nowPlaying")[0].style.color = "navy";
+            $("#topRated")[0].style.backgroundColor = "white";
+            $("#topRated")[0].style.color = "navy";
+            $("#popular")[0].style.backgroundColor = "white";
+            $("#popular")[0].style.color = "navy";
+            $("#cinema")[0].style.backgroundColor = "white";
+            $("#cinema")[0].style.color = "navy";
+
+            $("#movie")[0].value = "";
+
+            search("upcoming");
+
+        }
+
+        function cinema() {
+
+            searchBtnPress = false;
+            similarPress = false;
+            nowPlayingPress = false;
+            topRatedPress = false;
+            popularPress = false;
+            upcomingPress = false;
+            cinemaPress = true;
+            prevPress = false;
+            nextPress = false;
+
+            $("#cinema")[0].style.backgroundColor = "#0073e6";
+            $("#cinema")[0].style.color = "white";
+
+            $("#nowPlaying")[0].style.backgroundColor = "white";
+            $("#nowPlaying")[0].style.color = "navy";
+            $("#topRated")[0].style.backgroundColor = "white";
+            $("#topRated")[0].style.color = "navy";
+            $("#upcoming")[0].style.backgroundColor = "white";
+            $("#upcoming")[0].style.color = "navy";
+            $("#popular")[0].style.backgroundColor = "white";
+            $("#popular")[0].style.color = "navy";
+
+            setCinema();
+
+        }
+
+        function movieClick(id) {
+
+            if (($("#" + id).data("type") === "movie") || nowPlayingPress || topRatedPress || popularPress || upcomingPress || similarPress) {
+                url = "https://api.themoviedb.org/3/movie/" + id + "/external_ids?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=" + language;
+
+            } else if ($("#" + id).data("type") === "tv") {
+                url = "https://api.themoviedb.org/3/tv/" + id + "/external_ids?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=" + language;
+            }
+
+            $.getJSON(url, function (data) {
+                console.log("success");
+
+                try {
+
+                    if ($("#" + id + "_desc").text() == "") {
+                        $("#" + id + "_desc").empty();
+
+
+                        url = "http://www.omdbapi.com/?apikey=b5e5a8ff&i=" + data.imdb_id;
+
+                        $.getJSON(url, function (data) {
+                            console.log("success");
+
+                            if (data.Response == "False") {
+
+                                if (language == "en-US") {
+
+                                    alert("No additional details exist");
+
+                                } else {
+
+                                    alert("לא קיים מידע נוסף עבור סרט זה");
+                                }
+
+                            }
+                            else {
+
+                                $("#" + id)[0].style.border = "0.7vw solid #ff0000";
+
+                                var plot = $("#" + id).data("plot").toString().split("|").join("'").split("^").join('"');
+                                var title = $("#" + id).data("title").toString().split("|").join("'").split("^").join('"');
+
+                                if (language === "he-IL") {
+
+                                    var runtime = data.Runtime.replace("min", "דקות");
+                                    var rating = data.imdbRating;
+
+                                    var genres = $("#" + id).data("genres").toString().split("|").join("'").split("^").join('"');
+
+                                    if (data.imdbRating == "N/A") {
+                                        rating = "טרם דורג";
+                                    }
+
+                                    var type;
+                                    if (data.Type === "movie") {
+                                        type = "סרט";
+
+                                    } else if (data.Type === "series") {
+                                        type = "סדרה";
+                                    }
+
+                                    $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:12px;'><span dir='rtl' style='color:navy;font-weight:bold;'><h3>" + " " + title + " (" + data.Year + ")" + "</h3></span></div>");
+
+                                    if (!nowPlayingPress && !topRatedPress && !popularPress && !upcomingPress) {
+                                        $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:12px;'><span dir='rtl' style='color:navy;text-decoration: underline;font-weight:bold;'>סוג:</span>" + " " + type + "</div>");
+                                    }
+
+                                    $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:12px;'><span dir='rtl' style='color:navy;text-decoration: underline;font-weight:bold;'>בכורה:</span>" + " " + $("#" + id).data("rel_date") + "</div>");
+
+                                    if (genres) {
+                                        $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:12px;'><span dir='rtl' style='color:navy;text-decoration: underline;font-weight:bold;'>ז'אנר:</span>" + " " + genres + "</div>");
+                                    }
+
+                                    if (data.Actors != "N/A") {
+                                        $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:12px;'><span dir='rtl' style='color:navy;text-decoration: underline;font-weight:bold;'>שחקנים:</span>" + " " + data.Actors + "</div>");
+                                    }
+
+                                    if (runtime != "N/A") {
+                                        $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:12px;'><span dir='rtl' style='color:navy;text-decoration: underline;font-weight:bold;'>אורך:</span>" + " " + runtime + "</div>");
+                                    }
+
+                                    $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:12px;'><span dir='rtl' style='color:navy;text-decoration: underline;font-weight:bold;'>דירוג:</span>" + " " + rating + "</div>");
+
+                                    if (plot) {
+                                        $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px;margin-bottom:14px;'><span dir='rtl' style='color:navy;text-decoration: underline;font-weight:bold;'>עלילה:</span>" + " " + plot + "</div>");
+                                    }
+
+                                    if (data.Type === "movie") {
+                                        $("#" + id + "_desc").append("<div dir='rtl' style='margin-right:6px'><button id = 'similarMovies' style='background-color: white;font-size: 14px; text-align: center; color: navy; padding: 4px 6px; border-radius:5px; border: 1.5px solid navy;' onclick=similarMovies(" + id + ")>סרטים דומים</button></div><br />");
+                                    }
+                                } else {
+
+                                    var type = data.Type.charAt(0).toUpperCase() + data.Type.slice(1);
+
+                                    var rating = data.imdbRating;
+
+                                    if (data.imdbRating == "N/A") {
+                                        rating = "Unrated";
+                                    }
+
+                                    $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:12px;'><span style='color:navy;font-weight:bold;'><h3>" + " " + title + " (" + data.Year + ")" + "</h3></span></div>");
+
+                                    if (!nowPlayingPress && !topRatedPress && !popularPress && !upcomingPress) {
+                                        $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:12px;'><span style='color:navy;text-decoration: underline;font-weight:bold;'>Type:</span>" + " " + type + "</div>");
+                                    }
+
+                                    $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:12px;'><span style='color:navy;text-decoration: underline;font-weight:bold;'>Released:</span>" + " " + $("#" + id).data("rel_date") + "</div>");
+
+                                    if (data.Genre != "N/A") {
+                                        $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:12px;'><span style='color:navy;text-decoration: underline;font-weight:bold;'>Genre:</span>" + " " + data.Genre + "</div>");
+                                    }
+
+                                    if (data.Actors != "N/A") {
+                                        $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:12px;'><span style='color:navy;text-decoration: underline;font-weight:bold;'>Actors:</span>" + " " + data.Actors + "</div>");
+                                    }
+
+                                    if (data.Runtime != "N/A") {
+                                        $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:12px;'><span style='color:navy;text-decoration: underline;font-weight:bold;'>Running time:</span>" + " " + data.Runtime + "</div>");
+                                    }
+
+                                    $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:12px;'><span style='color:navy;text-decoration: underline;font-weight:bold;'>Rating:</span>" + " " + rating + "</div>");
+
+                                    if (plot) {
+                                        $("#" + id + "_desc").append("<div style='margin-left:6px;margin-bottom:14px;'><span style='color:navy;text-decoration: underline;font-weight:bold;'>Plot:</span>" + " " + plot + "</div>");
+                                    }
+
+                                    if (data.Type === "movie") {
+                                        $("#" + id + "_desc").append("<div style='margin-left:6px'><button id = 'similarMovies' style='background-color: white;font-size: 14px; text-align: center; color: navy; padding: 4px 6px; border-radius:5px; border: 1.5px solid navy;' onclick=similarMovies(" + id + ")>Similar Movies</button></div><br>");
+                                    }
+                                }
+
+                                url = "https://www.myapifilms.com/imdb/idIMDB?idIMDB=" + data.imdbID + "&token=2275c479-d38c-4d7f-99df-0226da98373c&format=json&language=en-us&aka=0&business=0&seasons=0&seasonYear=0&technical=0&trailers=1&movieTrivia=0&awards=0&moviePhotos=0&movieVideos=0&actors=0&biography=0&uniqueName=0&filmography=0&bornDied=0&starSign=0&actorActress=0&actorTrivia=0&similarMovies=0&goofs=0&keyword=0&quotes=0&fullSize=0&companyCredits=0&filmingLocations=0&directors=1&writers=1&callback=?";
+
+                                $.getJSON(url, function (data) {
+                                    console.log("success");
+
+                                    try {
+
+                                        var item = data.data.movies[0].trailer.qualities.find(item => item.quality === "480p");
+
+                                        if (item == null) {
+                                            var item = data.data.movies[0].trailer.qualities.find(item => item.quality === "SD");
+                                        }
+
+                                        if (item != null) {
+                                            if (language === "he-IL") {
+                                                $("#" + id + "_desc").append("<div style='margin-right:12px'><video id='video_" + id + "' controls style='margin-bottom:5px' width='96.2%' preload='auto' src='"
+                                                    + item.videoURL + "'</video></div>");
+                                            } else {
+                                                $("#" + id + "_desc").append("<div style='margin-left:12px'><video id='video_" + id + "' controls style='margin-bottom:5px' width='96.2%' preload='auto' src='"
+                                                    + item.videoURL + "'</video></div>");
+                                            }
+                                        }
+
+                                    } catch (e) {
+
+                                    }
+
+                                })
+
+                                if (prevID != null && prevID != id && !$("#" + prevID + "_desc").is(':hidden')) {
+                                    try {
+                                        document.getElementById("video_" + prevID).pause();
+
+                                    } catch (e) {
+
+                                    }
+                                    //$("#" + prevID + "_desc").animate({ height: 'toggle' });
+                                    $("#" + prevID + "_desc").fadeOut(200);
+                                    $("#" + prevID)[0].style.border = "0.3vw solid gold";
+                                }
+
+                                prevID = id;
+                                //$("#" + id + "_desc").animate({ height: 'toggle' });
+                                $("#" + id + "_desc").fadeIn(600);
+                            }
+                        })
+                    }
+                    else {
+
+                        if (prevID != null && prevID != id && !$("#" + prevID + "_desc").is(':hidden')) {
+                            try {
+                                document.getElementById("video_" + prevID).pause();
+
+                            } catch (e) {
+
+                            }
+
+                            //$("#" + prevID + "_desc").animate({ height: 'toggle' });
+                            $("#" + prevID + "_desc").fadeOut(200);
+                            $("#" + prevID)[0].style.border = "0.3vw solid gold";
+                        }
+
+                        prevID = id;
+                        try {
+                            document.getElementById("video_" + id).pause();
+
+                        } catch (e) {
+
+                        }
+
+                        if ($("#" + id + "_desc").is(':hidden')) {
+
+                            $("#" + id)[0].style.border = "0.7vw solid #ff0000";
+                            $("#" + id + "_desc").fadeIn(600);
+
+                        } else {
+
+                            $("#" + id)[0].style.border = "0.3vw solid gold";
+                            $("#" + id + "_desc").fadeOut(200);
+                        }
+
+                        //$("#" + id + "_desc").animate({ height: 'toggle' });
+                        //$("#" + id + "_desc").fadeIn(1000);
+                    }
+
+                } catch (e) {
+
+                }
+            })
+
+        };
+
+        function getGenres() {
+
+            var url = "https://api.themoviedb.org/3/genre/movie/list?api_key=e3c4f1f3c2b12e37e00d22e7a05983a8&language=he-IL";
+
+            $.getJSON(url, function (data) {
+                console.log("success");
+
+                genres = data.genres;
+
+
+            })
+
+        }
+
+        function setLanguage() {
+
+            var e = document.getElementById("languageDDL");
+            language = e.options[e.selectedIndex].value;
+
+            if (language == 'he-IL') {
+                $("#main")[0].dir = "rtl";
+                $("#main")[0].style.marginRight = $("#main")[0].style.marginLeft;
+                $("#main")[0].style.marginLeft = 0;
+
+                $("#divHeader1")[0].dir = "rtl";
+                $("#divHeader2")[0].dir = "rtl";
+
+                $("#spanMovie")[0].textContent = "סרטים / סדרות";
+                $("#movie")[0].placeholder = "טקסט חיפוש";
+                $("#movie")[0].style.marginRight = $("#movie")[0].style.marginLeft;
+                $("#movie")[0].style.marginLeft = 0;
+
+                $("#SearchBtn")[0].style.marginRight = $("#SearchBtn")[0].style.marginLeft;
+                $("#SearchBtn")[0].style.marginLeft = 0;
+
+                $("#nowPlaying")[0].innerHTML = $("#nowPlaying")[0].innerHTML.replace("Now Playing", "החדשים");
+                $("#topRated")[0].innerHTML = $("#topRated")[0].innerHTML.replace("Top Rated", "המדורגים ביותר");
+                $("#popular")[0].innerHTML = $("#popular")[0].innerHTML.replace("Popular", "הנצפים ביותר");
+                $("#upcoming")[0].innerHTML = $("#upcoming")[0].innerHTML.replace("Upcoming", "בקרוב בקולנוע");
+                $("#cinema")[0].innerHTML = $("#cinema")[0].innerHTML.replace("Cinema", "בתי קולנוע");
+
+            } else {
+                $("#main")[0].dir = "ltr";
+                $("#main")[0].style.marginRight = $("#main")[0].style.marginLeft;
+                $("#main")[0].style.marginLeft = 0;
+
+                $("#divHeader1")[0].dir = "ltr";
+                $("#divHeader2")[0].dir = "ltr";
+
+                $("#spanMovie")[0].textContent = "Movie / Series";
+                $("#movie")[0].placeholder = "Search text";
+                $("#movie")[0].style.marginLeft = $("#movie")[0].style.marginRight;
+                $("#movie")[0].style.marginRight = 0;
+
+                $("#SearchBtn")[0].style.marginLeft = $("#SearchBtn")[0].style.marginRight;
+                $("#SearchBtn")[0].style.marginRight = 0;
+
+                $("#nowPlaying")[0].innerHTML = $("#nowPlaying")[0].innerHTML.replace("החדשים", "Now Playing");
+                $("#topRated")[0].innerHTML = $("#topRated")[0].innerHTML.replace("המדורגים ביותר", "Top Rated");
+                $("#popular")[0].innerHTML = $("#popular")[0].innerHTML.replace("הנצפים ביותר", "Popular");
+                $("#upcoming")[0].innerHTML = $("#upcoming")[0].innerHTML.replace("בקרוב בקולנוע", "Upcoming");
+                $("#cinema")[0].innerHTML = $("#cinema")[0].innerHTML.replace("בתי קולנוע", "Cinema");
+
+
+            }
+
+
+            if (similarPress) {
+                search("similarMovies");
+
+            } else if (nowPlayingPress) {
+                search("nowPlaying");
+
+            } else if (topRatedPress) {
+                search("topRated");
+
+            } else if (popularPress) {
+                search("popular");
+
+            } else if (upcomingPress) {
+                search("upcoming");
+
+            } else if (searchBtnPress) {
+                searchBtn("searchBtn");
+            }
+
+            else if (cinemaPress) {
+                setCinema();
+            }
+        }
+
+    </script>
+
+
+    <style type="text/css">
+        .ui-menu-item .imdbTitle {
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .ui-menu-item .imdbCast {
+            font-size: 0.7em;
+            font-style: italic;
+            line-height: 110%;
+            color: #666;
+        }
+
+        .ui-menu-item .imdbImage {
+            float: left;
+            margin-right: 5px;
+        }
+
+        .ui-menu-item .clear {
+            clear: both;
+        }
+    </style>
+
+    <style>
+        .btn {
+            background-color: white;
+            border: none;
+            color: navy;
+            padding: 12px 16px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid navy;
+            margin-bottom: 15px;
+            vertical-align: top;
+            text-align: center;
+            width: 20%;
+            min-width: 150px;
+            max-width: 200px;
+            height: 20vh;
+            max-height: 150px;
+        }
+
+            /* Darker background on mouse-over */
+            .btn:hover {
+                background-color: RoyalBlue;
+            }
+    </style>
+
+    <style>
+        .speech {
+            border: 1px solid #DDD;
+            width: 300px;
+            padding: 0;
+            margin: 0
+        }
+
+            .speech input {
+                border: 0;
+                width: 240px;
+                display: inline-block;
+                height: 30px;
+            }
+
+            .speech img {
+                width: 40px;
+            }
+    </style>
+
+    <script>
+
+        function startDictation() {
+
+            if (window.hasOwnProperty('webkitSpeechRecognition')) {
+
+                var recognition = new webkitSpeechRecognition();
+                //recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition)();
+
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = language;
+                recognition.start();
+
+                recognition.onstart = function () {
+                    speech.src = "mic.gif";
+                };
+
+                recognition.onend = function () {
+                    speech.src = 'https://i.imgur.com/cHidSVu.gif';
+
+                }
+
+                recognition.onresult = function (e) {
+                    document.getElementById('movie').value = e.results[0][0].transcript;
+                    document.getElementById('movie').value = document.getElementById('movie').value.replace("-", "");
+                    recognition.stop();
+                    searchBtn("SearchBtn");
+                };
+                recognition.onerror = function (e) {
+                    recognition.stop();
+                }
+
+            }
+        }
+
+    </script>
+
+</head>
+
+<body>
+    
+    <div id="divHeader1" style="min-height: 100vh; width: 100% ;background-image:url('background-1.jpg'); background-size:cover ;position:relative;display:inline-block;">
+
+        <div id="select" dir="rtl" style="margin-right:1.75%">
+            <select id="languageDDL" class="form-control form-control-sm" onchange="setLanguage()" style="position:absolute;width: 30%;max-width:55px; background-color: white; text-align: center; font-size: 12px; margin-top:10px; font-family: Arial;">
+                <option value="en-US" selected>En</option>
+                <option value="he-IL">He</option>
+            </select>
+        </div>
+        <br /><br />
+        <div id="divHeader2" style="width: 100%; display: inline-block; position:static; text-align:center;margin-top:10px;">
+
+            <form id="form">
+                <span id="spanMovie" style="color: navy; font-family: arial; text-decoration: underline; font-weight: bold; font-size: 20px;">Movie / Series</span><br />
+                <br />
+                <input id="movie" type="search" required autofocus autocomplete="off" placeholder="Search text" style="box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; display: inline-block; padding: 5px 5px; vertical-align:middle; font-size: 17px;font-family: Arial; height:40px;width:60%;max-width:400px" value="" />
+                <input id="SearchBtn" type="image" src="search.png" style="height: 23px;vertical-align:middle;margin-left:7px; cursor:pointer; " name="name" onclick="searchBtn(this.id)" />
+                <img id="speech" onclick="startDictation()" src="https://i.imgur.com/cHidSVu.gif" />
+            </form>
+            <br />
+            <button type="button" class="btn btn-primary" id="nowPlaying" onclick="nowPlaying()">
+                <svg class="bi bi-collection-play" width="2em" height="2em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M14.5 13.5h-13A.5.5 0 011 13V6a.5.5 0 01.5-.5h13a.5.5 0 01.5.5v7a.5.5 0 01-.5.5zm-13 1A1.5 1.5 0 010 13V6a1.5 1.5 0 011.5-1.5h13A1.5 1.5 0 0116 6v7a1.5 1.5 0 01-1.5 1.5h-13zM2 3a.5.5 0 00.5.5h11a.5.5 0 000-1h-11A.5.5 0 002 3zm2-2a.5.5 0 00.5.5h7a.5.5 0 000-1h-7A.5.5 0 004 1z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M6.258 6.563a.5.5 0 01.507.013l4 2.5a.5.5 0 010 .848l-4 2.5A.5.5 0 016 12V7a.5.5 0 01.258-.437z" clip-rule="evenodd" />
+                </svg><br />Now Playing
+            </button>
+
+            <button class="btn" id="topRated" onclick="topRated()">
+                <svg class="bi bi-star" width="2em" height="2em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.523-3.356c.329-.314.158-.888-.283-.95l-4.898-.696L8.465.792a.513.513 0 00-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767l-3.686 1.894.694-3.957a.565.565 0 00-.163-.505L1.71 6.745l4.052-.576a.525.525 0 00.393-.288l1.847-3.658 1.846 3.658a.525.525 0 00.393.288l4.052.575-2.906 2.77a.564.564 0 00-.163.506l.694 3.957-3.686-1.894a.503.503 0 00-.461 0z" clip-rule="evenodd" />
+                </svg><br />Top Rated
+            </button><br />
+
+            <button class="btn" id="popular" onclick="popular()">
+                <svg class="bi bi-heart" width="2em" height="2em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M8 2.748l-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 01.176-.17C12.72-3.042 23.333 4.867 8 15z" clip-rule="evenodd" />
+                </svg><br />Popular
+            </button>
+
+            <button class="btn" id="upcoming" onclick="upcoming()" >
+                <svg class="bi bi-clock" width="2em" height="2em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M8 15A7 7 0 108 1a7 7 0 000 14zm8-7A8 8 0 110 8a8 8 0 0116 0z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M7.5 3a.5.5 0 01.5.5v5.21l3.248 1.856a.5.5 0 01-.496.868l-3.5-2A.5.5 0 017 9V3.5a.5.5 0 01.5-.5z" clip-rule="evenodd" />
+                </svg><br />Upcoming
+            </button><br />
+
+            <button class="btn" id="cinema" onclick="cinema()">
+                <svg class="bi bi-film" width="2em" height="2em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M0 1a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H1a1 1 0 01-1-1V1zm4 0h8v6H4V1zm8 8H4v6h8V9zM1 1h2v2H1V1zm2 3H1v2h2V4zM1 7h2v2H1V7zm2 3H1v2h2v-2zm-2 3h2v2H1v-2zM15 1h-2v2h2V1zm-2 3h2v2h-2V4zm2 3h-2v2h2V7zm-2 3h2v2h-2v-2zm2 3h-2v2h2v-2z" clip-rule="evenodd" />
+                </svg><br />Cinema
+            </button>
+
+        </div>
+    </div>
+    <br />
+
+    <div id="main" class="main" style="text-align:center;background-image: url('bg.jpg')">
+    </div>    
+
+</body>
+</html>
